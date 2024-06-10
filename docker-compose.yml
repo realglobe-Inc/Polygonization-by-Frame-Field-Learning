@@ -1,0 +1,27 @@
+services:
+  ffl:
+    image: ffl-image
+    build:
+      context: Dockers/
+      args:
+        CONTAINER_USER: ${CONTAINER_USER}
+        CONTAINER_USER_ID: ${CONTAINER_USER_ID}
+        CONTAINER_USER_GID: ${CONTAINER_USER_GID}
+    shm_size: 16G
+    env_file: .env
+    volumes:
+      - ./:/workdir
+      - ${DATA_DIR}:/data
+    ports:
+      - "${TB_PORT}:6006"
+    environment:
+      PYTHONPATH: "/workdir:/workdir/lydorn_utils:/workdir/pytorch_lydorn"
+    working_dir: /workdir
+    command: /bin/bash
+    tty: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
