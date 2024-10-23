@@ -27,6 +27,7 @@ from eval_coco import eval_coco
 from lydorn_utils import run_utils, python_utils
 from lydorn_utils import print_utils
 
+from memory_profiler import profile
 
 # ---Examples of calling main.py: --- #
 #
@@ -187,6 +188,7 @@ def launch_inference_from_filepath(args):
     inference_from_filepath(config, args.in_filepath, backbone, args.out_dirpath)
 
 
+# @profile()
 def launch_train(args):
     assert args.config is not None, "Argument --config must be specified. Run 'python main.py --help' for help on arguments."
     config = run_utils.load_config(args.config)
@@ -229,6 +231,7 @@ def launch_train(args):
     # Setup num_workers per process:
     if config["num_workers"] is None:
         config["num_workers"] = int(torch.multiprocessing.cpu_count() / config["gpus"])
+        # config["num_workers"] = 1
 
     # --- Distributed init:
     os.environ['MASTER_ADDR'] = args.master_addr
@@ -239,6 +242,11 @@ def launch_train(args):
     shared_dict["init_checkpoints_dirpath"] = None
     barrier = manager.Barrier(args.gpus)
 
+    print("train_process", train_process)
+    print("args_gpus", args.gpus)
+    print("config", config)
+    print("shared_dict", shared_dict)
+    print("barrier", barrier)
     torch.multiprocessing.spawn(train_process, nprocs=args.gpus, args=(config, shared_dict, barrier))
 
 

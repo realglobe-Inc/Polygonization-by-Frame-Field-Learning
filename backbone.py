@@ -43,6 +43,8 @@ def get_backbone(backbone_params):
         from torchvision.models.segmentation._utils import _SimpleSegmentationModel
         from frame_field_learning.unet_resnet import UNetResNetBackbone
 
+        print(f'{backbone_params["pretrained"]=}')
+        backbone_params["pretrained"]=False
         backbone = UNetResNetBackbone(backbone_params["encoder_depth"], num_filters=backbone_params["num_filters"],
                                       dropout_2d=backbone_params["dropout_2d"],
                                       pretrained=backbone_params["pretrained"],

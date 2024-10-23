@@ -21,6 +21,8 @@ from frame_field_learning import polygonize_utils, plot_utils
 
 DEBUG = False
 
+from memory_profiler import profile
+
 
 def debug_print(s: str):
     if DEBUG:
@@ -178,6 +180,7 @@ def run_one(seg_filepath, out_dirpath, config, im_dirpath, out_ext=None, bbox=No
     # seg = skimage.io.imread(seg_filepath) / 255
     seg_img = Image.open(seg_filepath)
     seg = np.array(seg_img)
+    del seg_img
     if seg.dtype == np.uint8:
         seg = seg / 255
     elif seg.dtype == np.bool:

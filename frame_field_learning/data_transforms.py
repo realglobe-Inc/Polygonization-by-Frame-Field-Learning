@@ -11,6 +11,8 @@ import torch_lydorn.torchvision
 
 from lydorn_utils import print_utils
 
+from memory_profiler import profile
+
 
 class Print(object):
     """Convert polygons to a single graph"""
