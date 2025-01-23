@@ -6,7 +6,7 @@
   "gamma": 0.95,  // Gamma of exponential learning rate scheduler
   "weight_decay": 0,  // Not used
   "dropout_keep_prob": 1.0,  // Not used
-  "max_epoch": 4,
+  "max_epoch": 100,
   "log_steps": 200,
   "checkpoint_epoch": 1,
   "checkpoints_to_keep": 5,  // outputs

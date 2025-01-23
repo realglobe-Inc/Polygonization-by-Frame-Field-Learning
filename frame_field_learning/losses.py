@@ -17,6 +17,8 @@ from lydorn_utils import math_utils, print_utils
 
 # --- Base classes --- #
 
+import skimage
+
 
 class Loss(torch.nn.Module):
     def __init__(self, name):
@@ -329,10 +331,47 @@ class SegLoss(Loss):
         pred_seg = pred_batch["seg"]
         gt_seg = gt_batch["gt_polygons_image"][:, self.gt_channel_selector, ...]
         weights = gt_batch["seg_loss_weights"][:, self.gt_channel_selector, ...]
-        dice = measures.dice_loss(pred_seg, gt_seg)
-        mean_dice = torch.mean(dice)
-        mean_cross_entropy = F.binary_cross_entropy(pred_seg, gt_seg, weight=weights, reduction="mean")
 
+        # ignore_index = 255
+        # mask = (gt_seg != ignore_index).int()
+        # masked_pred_seg = pred_seg * mask
+        # dice = measures.dice_loss(masked_pred_seg, gt_seg)
+        # mean_dice = dice.sum()/mask.sum()
+        # cross_entropy = F.binary_cross_entropy(masked_pred_seg, gt_seg, weight=weights, reduction="none")
+        # mean_cross_entropy = cross_entropy.sum()/mask.sum()
+
+        gt_polygons_image = gt_batch["gt_polygons_image"]
+        # gt_sum = (gt_polygons_image.sum(dim=1) > 0).int()
+        gt_sum = (gt_polygons_image[:, 0, ...] > 0).int()  # count: 117279
+        mask = (gt_batch["image"].sum(dim=1) > 0).int()  # 完全な黒は0, 他は1
+        # mask = torch.zeros(10, 300, 300)  # gt_batch["distances"].device
+        # print(f"{gt_batch['image_relative_filepath']=}")
+        # print(f"{gt_batch['gt_polygons_image'].device=}")
+
+        count = ((gt_sum == 1) & (mask == 0)).sum().item()
+        # count = (mask == 0).sum().item()
+        print("count:", count)  #
+
+        mask_expanded = mask.unsqueeze(1).expand(-1, len(self.gt_channel_selector)-1, -1, -1)
+        # print(f"{pred_seg.shape=}")
+        # print(f"{mask_expanded.shape=}")
+        # print(f"{mask_expanded.sum().item()=}")
+        
+
+        if mask_expanded.sum().item() == 0:
+            mean_dice = mask_expanded.sum()
+            mean_cross_entropy = mask_expanded.sum()
+        else:
+            masked_pred_seg = pred_seg * mask_expanded
+            dice = measures.dice_loss(masked_pred_seg, gt_seg)
+            # print(f"{dice=}")
+            mean_dice = dice.sum()/mask_expanded.sum()
+            cross_entropy = F.binary_cross_entropy(masked_pred_seg, gt_seg, weight=weights, reduction="none")
+            mean_cross_entropy = cross_entropy.sum()/mask_expanded.sum()
+            # print(f"{mean_dice=}")
+            # print(f"{mean_cross_entropy=}")
+
+        # PermissionError: [Errno 13] Permission denied: '/workdir/seg_pred.png'
         # Display:
         # dispaly_pred_seg = pred_seg[0, 0].cpu().detach().numpy()
         # print(f'{self.name}_pred:', dispaly_pred_seg.shape, dispaly_pred_seg.min(), dispaly_pred_seg.max())
@@ -340,6 +379,18 @@ class SegLoss(Loss):
         # dispaly_gt_seg = gt_seg[0].cpu().detach().numpy()
         # skimage.io.imsave(f'{self.name}_gt.png', dispaly_gt_seg)
 
+        # self.bce_coef=1.0
+        # mean_cross_entropy.shape=torch.Size([])
+        # self.dice_coef=0.2
+        # mean_dice.shape=torch.Size([])
+        # print(f"{self.bce_coef=}")
+        # print(f"{mean_cross_entropy.shape=}")
+        # print(f"{self.dice_coef=}")
+        # print(f"{mean_dice.shape=}")
+
+        segloss = self.bce_coef * mean_cross_entropy + self.dice_coef * mean_dice
+        # print("SegLoss", segloss.sum().item())
+        # print(self.norm[0])
         return self.bce_coef * mean_cross_entropy + self.dice_coef * mean_dice
 
 
@@ -356,7 +407,26 @@ class CrossfieldAlignLoss(Loss):
             "gt_polygons_image should have at least 2 channels for interior and edges"
         gt_edges = gt_polygons_image[:, 1, ...]
         align_loss = frame_field_utils.framefield_align_error(c0, c2, z, complex_dim=1)
-        avg_align_loss = torch.mean(align_loss * gt_edges)
+        
+        # ignore_index = 255
+        # mask = (gt_edges != ignore_index).int()  # ([10, 300, 300])
+        # masked_align_loss = align_loss * mask
+        # # avg_align_loss = torch.mean(align_loss * gt_edges)
+        # avg_align_loss = masked_align_loss.sum()/mask.sum()
+
+        # print(f"{align_loss.shape=}")  # torch.Size([10, 300, 300])
+        # print(f"{gt_edges.shape=}")  # ([10, 300, 300])
+
+        mask = (gt_batch["image"].sum(dim=1) > 0).int()
+        # mask_expanded = torch.cat([mask[i].repeat(2, 1, 1) for i in range(10)], dim=0)
+        # print(f"{mask.shape=}")  # torch.Size([10, 300, 300])
+        # print(f"{mask_expanded.shape=}")  # ([10, 1, 300, 300])
+        
+        if mask.sum().item() == 0:
+            avg_align_loss = mask.sum()
+        else:
+            masked_align_loss = align_loss * gt_edges * mask
+            avg_align_loss = masked_align_loss.sum()/mask.sum()
 
         self.extra_info["gt_field"] = gt_batch["gt_field"]
         return avg_align_loss
@@ -379,7 +449,18 @@ class CrossfieldAlign90Loss(Loss):
         gt_edges_minus_vertices = gt_edges - gt_vertices
         gt_edges_minus_vertices = gt_edges_minus_vertices.clamp(0, 1)
         align90_loss = frame_field_utils.framefield_align_error(c0, c2, z_90deg, complex_dim=1)
-        avg_align90_loss = torch.mean(align90_loss * gt_edges_minus_vertices)
+        
+        # # gt_seg = gt_batch["gt_polygons_image"][:, self.gt_channel_selector, ...]
+        # ignore_index = 255
+        # print(f"{align90_loss.shape=}")
+        # mask = (gt_edges != ignore_index).int()
+        mask = (gt_batch["image"].sum(dim=1) > 0).int()
+        if mask.sum().item() == 0:
+            avg_align90_loss = mask.sum()
+        else:
+            masked_align90_loss = align90_loss * mask * gt_edges_minus_vertices
+            # avg_align90_loss = torch.mean(align90_loss * gt_edges_minus_vertices)
+            avg_align90_loss = masked_align90_loss.sum()/mask.sum()
         return avg_align90_loss
 
 
@@ -393,7 +474,24 @@ class CrossfieldSmoothLoss(Loss):
         gt_polygons_image = gt_batch["gt_polygons_image"]
         gt_edges_inv = 1 - gt_polygons_image[:, 1, ...]
         penalty = self.laplacian_penalty(c0c2)
-        avg_penalty = torch.mean(penalty * gt_edges_inv[:, None, ...])
+        
+        gt_edges = gt_polygons_image[:, 1, ...].unsqueeze(1)
+        # gt_seg = gt_batch["gt_polygons_image"][:, self.gt_channel_selector, ...]
+        # ignore_index = 255
+        # print(f"{penalty.shape=}")  # torch.Size([10, 4, 300, 300])
+        # # print(f"{gt_polygons_image.shape=}")
+        # mask = (gt_edges != ignore_index).int()
+        mask = (gt_batch["image"].sum(dim=1) > 0).int()
+        mask_expanded = mask.unsqueeze(1).expand(-1, 4, -1, -1)
+        # print(f"{mask_expanded.shape=}")  # torch.Size([10, 4, 300, 300])
+
+        if mask.sum().item() == 0:
+            avg_penalty = mask_expanded.sum()
+        else:
+            masked_penalty = penalty * mask_expanded * gt_edges_inv[:, None, ...]
+            # avg_penalty = torch.mean(penalty * gt_edges_inv[:, None, ...])
+            avg_penalty = masked_penalty.sum()/mask_expanded.sum()
+
         return avg_penalty
 
 
@@ -410,9 +508,23 @@ class SegCrossfieldLoss(Loss):
         seg_slice_grads_normed = pred_batch["seg_grads_normed"][:, self.pred_channel, ...]
         seg_slice_grad_norm = pred_batch["seg_grad_norm"][:, self.pred_channel, ...]
         align_loss = frame_field_utils.framefield_align_error(c0, c2, seg_slice_grads_normed, complex_dim=1)
+
+        gt_polygons_image = gt_batch["gt_polygons_image"]
+        gt_edges = gt_polygons_image[:, 1, ...].unsqueeze(1)
+        # gt_seg = gt_batch["gt_polygons_image"][:, self.gt_channel_selector, ...]
+        # ignore_index = 255
+        # print(f"{align_loss.shape=}")
+        # mask = (gt_edges != ignore_index).int()
+        mask = (gt_batch["image"].sum(dim=1) > 0).int()
+        if mask.sum().item() == 0:
+            avg_align_loss = mask.sum()
+        else:
+            masked_align_loss = align_loss * mask * seg_slice_grad_norm.detach()
+            avg_align_loss = masked_align_loss.sum()/mask.sum()
+
         # normed_align_loss = align_loss * seg_slice_grad_norm
         # avg_align_loss = torch.sum(normed_align_loss) / (torch.sum(seg_slice_grad_norm) + 1e-6)
-        avg_align_loss = torch.mean(align_loss * seg_slice_grad_norm.detach())
+        # avg_align_loss = torch.mean(align_loss * seg_slice_grad_norm.detach())
         # (prev line) Don't back-propagate to seg_slice_grad_norm so that seg smoothness is not encouraged
 
         # Save extra info for viz:
@@ -438,4 +550,9 @@ class SegEdgeInteriorLoss(Loss):
         boundary_mask = (1 - torch.cos(np.pi * seg_interior_grad_norm)) / 2
         mask = torch.max(outside_mask, boundary_mask).float()
         avg_loss = torch.mean(raw_loss * mask)
+
+        # gt_segとか使ったmaskは不要???
+        # ignore_index = 255
+
+
         return avg_loss
