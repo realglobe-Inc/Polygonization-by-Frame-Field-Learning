@@ -169,7 +169,7 @@ class Trainer:
             # all_grads = torch.cat(all_grads)
             # all_grads_abs = torch.abs(all_grads)
 
-            opt.step()
+            opt.step()  # モデルの更新？
             opt.zero_grad()
         # print(f"{time.time() - t0}s")
 
