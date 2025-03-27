@@ -1,6 +1,6 @@
 {
 
-  "method": ["simple", "acm"],  // Possible options: simple, acm, asm, tracing or a list: ["simple", "asm", "asm"] to apply several
+  "method": ["asm"],  // Possible options: simple, acm, asm, tracing or a list: ["simple", "asm", "asm"] to apply several
 
   "common_params": {
     "init_data_level": 0.5   // Seg level to init contours for all methods

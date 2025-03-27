@@ -23,22 +23,22 @@
   "seg_threshold": 0.5,
 
   "save_individual_outputs": {
-    "image": false,
+    "image": true,
     "seg_gt": false,
-    "seg": false,
-    "seg_mask": false,
+    "seg": true,
+    "seg_mask": true,
     "seg_opencities_mask": false,
-    "seg_luxcarta": false,
-    "crossfield": false,
+    "seg_luxcarta": true,
+    "crossfield": true,
     "uv_angles": false,
-    "poly_shapefile": false,
+    "poly_shapefile": true,
     "poly_geojson": false,
-    "poly_viz": false
+    "poly_viz": true
   },
-
+  
   "save_aggregated_outputs": {
     "stats": false,
-    "seg_coco": false,
-    "poly_coco": false
+    "seg_coco": true,
+    "poly_coco": true
   }
 }

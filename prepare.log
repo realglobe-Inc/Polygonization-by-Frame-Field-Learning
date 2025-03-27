@@ -1,5 +1,5 @@
 Filesystem                     Type      Size  Used Avail Use% Mounted on
-/dev/root                      ext4      1.5T  819G  616G  58% /
+/dev/root                      ext4      1.5T  1.2T  271G  82% /
 tmpfs                          tmpfs     7.8G     0  7.8G   0% /dev/shm
 tmpfs                          tmpfs     3.1G  1.1M  3.1G   1% /run
 tmpfs                          tmpfs     5.0M     0  5.0M   0% /run/lock
@@ -9,5 +9,5 @@ efivarfs                       efivarfs  128K  4.1K  119K   4% /sys/firmware/efi
 tmpfs                          tmpfs     1.6G  4.0K  1.6G   1% /run/user/1000
 
                total        used        free      shared  buff/cache   available
-Mem:            15Gi       8.7Gi       5.8Gi       156Mi       940Mi       6.2Gi
+Mem:            15Gi       1.1Gi        13Gi       1.0Mi       454Mi        14Gi
 Swap:             0B          0B          0B

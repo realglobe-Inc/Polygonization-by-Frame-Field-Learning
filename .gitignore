@@ -1,3 +1,9 @@
 memo.txt
 prepare.log
 __pycache__
+test_16cm_files
+test_25cm_files
+test_files_ffl
+test_files_resolution
+test_image_dir
+frame_field_learning/checkpoint*/
