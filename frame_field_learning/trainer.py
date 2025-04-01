@@ -169,7 +169,7 @@ class Trainer:
             # all_grads = torch.cat(all_grads)
             # all_grads_abs = torch.abs(all_grads)
 
-            opt.step()
+            opt.step()  # モデルの更新？
             opt.zero_grad()
         # print(f"{time.time() - t0}s")
 
@@ -441,6 +441,9 @@ class Trainer:
 
             prev_best_val_checkpoint = torch.load(prev_filepath)
             prev_best_loss = prev_best_val_checkpoint["val_loss"]
+            if prev_best_loss is None:
+                print("Assign a temporary value to prev_best_loss to prevent Error during fine tuning")
+                prev_best_loss = 1000.0
             if val_loss < prev_best_loss:
                 self.save_checkpoint(filepath, epoch, train_loss, val_loss, train_acc, val_acc)
                 # Delete prev best val
